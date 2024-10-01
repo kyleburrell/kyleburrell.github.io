@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditory Oddball Paradigm</title>
+</head>
+<body>
+    <h1>Auditory Oddball Paradigm</h1>
+    <p>Open the console to see the stimuli log. Press "Start" to begin and "Stop" to end the experiment.</p>
+    <button id="startBtn">Start</button>
+    <button id="stopBtn">Stop</button>
+
+    <script>
+        // Sound parameters
+        const standardFreq = 500; // Frequency of the standard tone (500 Hz)
+        const oddballFreq = 1000; // Frequency of the oddball tone (1000 Hz)
+        const duration = 0.3; // Duration of each tone in seconds (300 ms)
+        
+        // Oddball paradigm parameters
+        const standardProbability = 0.8;  // Probability for standard tone (80%)
+        const oddballProbability = 0.2;   // Probability for oddball tone (20%)
+        const stimulusIntervalMin = 800;  // Minimum interval between tones (in milliseconds)
+        const stimulusIntervalMax = 1500; // Maximum interval between tones (in milliseconds)
+        
+        let isRunning = false;
+        let audioContext;
+        
+        function generateTone(frequency, duration) {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.type = 'sine';  // Sine wave for the tone
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);  // Set frequency
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + duration);  // Stop after duration
+            
+            return new Promise(resolve => {
+                oscillator.onended = resolve;
+            });
+        }
+
+        function randomInterval(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        async function playTone(frequency) {
+            await generateTone(frequency, duration);
+        }
+
+        function startOddballParadigm() {
+            if (isRunning) return;  // Prevent multiple start calls
+
+            isRunning = true;
+            console.log("Starting auditory oddball paradigm...");
+
+            function playNextTone() {
+                if (!isRunning) return;  // Stop if the experiment is stopped
+
+                const isOddball = Math.random() < oddballProbability;
+                const frequency = isOddball ? oddballFreq : standardFreq;
+                
+                if (isOddball) {
+                    console.log("Oddball");
+                } else {
+                    console.log("Standard");
+                }
+
+                // Play the tone
+                playTone(frequency).then(() => {
+                    const nextInterval = randomInterval(stimulusIntervalMin, stimulusIntervalMax);
+                    console.log(`Next stimulus in ${nextInterval.toFixed(2)} ms`);
+
+                    // Schedule the next tone
+                    setTimeout(playNextTone, nextInterval);
+                });
+            }
+
+            playNextTone();  // Start the first tone
+        }
+
+        function stopOddballParadigm() {
+            isRunning = false;
+            console.log("Experiment terminated by user.");
+        }
+
+        document.getElementById('startBtn').addEventListener('click', startOddballParadigm);
+        document.getElementById('stopBtn').addEventListener('click', stopOddballParadigm);
+    </script>
+</body>
+</html>
